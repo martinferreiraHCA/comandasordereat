@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comandas de cocina · Generador de tickets A4</title>
+<meta name="description" content="Subí el Excel de pedidos y generá hojas A4 en blanco y negro con tickets de comanda recortables, agrupados por categoría.">
+<link rel="stylesheet" href="assets/css/app.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧾</text></svg>">
+</head>
+<body>
+
+<header class="topbar no-print">
+  <div class="topbar__brand">
+    <span class="topbar__logo">🧾</span>
+    <div>
+      <h1>Comandas de cocina</h1>
+      <p>Excel de pedidos → hojas A4 en blanco y negro con tickets recortables</p>
+    </div>
+  </div>
+  <div class="topbar__actions">
+    <button id="btnPrint" class="btn btn--primary" disabled>Imprimir / Guardar PDF</button>
+    <button id="btnReset" class="btn" disabled>Cargar otro archivo</button>
+  </div>
+</header>
+
+<main class="layout">
+
+  <!-- ============ Panel izquierdo ============ -->
+  <aside class="panel no-print">
+
+    <section class="card" id="dropCard">
+      <h2>1 · Archivo</h2>
+      <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Subir archivo de pedidos">
+        <div class="dropzone__icon">📄</div>
+        <p class="dropzone__title">Arrastrá el Excel acá</p>
+        <p class="dropzone__hint">o hacé clic para elegirlo · .xlsx, .xls, .csv</p>
+        <input type="file" id="fileInput" accept=".xlsx,.xls,.xlsm,.csv" hidden>
+      </div>
+      <p class="filestatus" id="fileStatus">Ningún archivo cargado.</p>
+      <button class="linkbtn" id="btnDemo" type="button">Probar con datos de ejemplo</button>
+      <a class="linkbtn" href="ejemplo/ejemplo-pedidos.xlsx" download>Descargar Excel modelo</a>
+    </section>
+
+    <section class="card" id="optionsCard" hidden>
+      <h2>2 · Agrupación</h2>
+
+      <label class="field">
+        <span>Agrupar tickets por</span>
+        <select id="optGroupBy">
+          <option value="nivel">Nivel (Kinder / Primaria / Secundaria)</option>
+          <option value="clase">Clase exacta (1ºB, 7ºD, …)</option>
+          <option value="hora">Hora de retiro</option>
+          <option value="producto">Producto principal</option>
+          <option value="ninguno">Sin agrupar</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span>Ordenar dentro del grupo</span>
+        <select id="optSortBy">
+          <option value="hora">Hora, luego nombre</option>
+          <option value="nombre">Nombre</option>
+          <option value="clase">Clase</option>
+          <option value="producto">Producto</option>
+          <option value="id">Nº de pedido</option>
+        </select>
+      </label>
+
+      <label class="check">
+        <input type="checkbox" id="optNewPage" checked>
+        <span>Cada grupo empieza en hoja nueva</span>
+      </label>
+      <p class="hint" id="pageHint" hidden></p>
+
+      <h2 class="mt">3 · Hoja A4</h2>
+
+      <label class="field">
+        <span>Tickets por hoja</span>
+        <select id="optLayout">
+          <option value="2x2">4 grandes (2 × 2)</option>
+          <option value="2x3" selected>6 medianos (2 × 3)</option>
+          <option value="2x4">8 chicos (2 × 4)</option>
+          <option value="3x4">12 mini (3 × 4)</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span>Título de la comanda</span>
+        <input type="text" id="optTitle" placeholder="COMANDA DE COCINA">
+      </label>
+
+      <label class="field">
+        <span>Fecha mostrada</span>
+        <input type="text" id="optDate" placeholder="17/08/2026">
+      </label>
+
+      <label class="check">
+        <input type="checkbox" id="optSummary" checked>
+        <span>Incluir hoja resumen de producción</span>
+      </label>
+      <label class="check">
+        <input type="checkbox" id="optOnlyComments">
+        <span>Solo pedidos con observaciones</span>
+      </label>
+      <label class="check">
+        <input type="checkbox" id="optCutMarks" checked>
+        <span>Marcas de corte punteadas</span>
+      </label>
+
+      <label class="field">
+        <span>Estado</span>
+        <select id="optStatus"><option value="__all">Todos</option></select>
+      </label>
+    </section>
+
+    <section class="card" id="statsCard" hidden>
+      <h2>Resumen</h2>
+      <dl class="stats" id="stats"></dl>
+      <p class="tip">
+        Al imprimir: <strong>A4</strong>, márgenes <strong>ninguno / predeterminados</strong>,
+        escala <strong>100 %</strong> y desmarcá «encabezados y pies de página».
+      </p>
+    </section>
+
+    <p class="foot">Todo se procesa en tu navegador. El archivo nunca se sube a ningún servidor.</p>
+  </aside>
+
+  <!-- ============ Vista previa ============ -->
+  <section class="preview">
+    <div class="preview__bar">
+      <span id="previewInfo">Vista previa</span>
+      <span class="preview__zoom">
+        <button class="btn btn--sm" id="btnZoomOut" type="button">−</button>
+        <span id="zoomLabel">55 %</span>
+        <button class="btn btn--sm" id="btnZoomIn" type="button">+</button>
+      </span>
+    </div>
+    <div class="preview__scroll" id="previewScroll">
+      <div class="empty" id="emptyState">
+        <p>Cargá un archivo para ver las hojas A4.</p>
+      </div>
+      <div id="sheets" class="sheets"></div>
+    </div>
+  </section>
+</main>
+
+<script src="assets/js/xlsx.full.min.js"></script>
+<script src="assets/js/parser.js"></script>
+<script src="assets/js/render.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
